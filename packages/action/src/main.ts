@@ -33,7 +33,7 @@ async function main(): Promise<void> {
               apiKey: process.env.PI_AGENT_API_KEY ?? config.apiKey,
             })
         : undefined,
-  } as any);
+  });
 }
 
 main().catch((error: unknown) => {

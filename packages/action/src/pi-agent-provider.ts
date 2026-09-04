@@ -1,4 +1,4 @@
-import { LLMError, createPiAgent, type PiAgentEvent, type PiAgentOptions } from '@acr/pi-agent';
+import { LLMError, createPiAgent, type PiAgentOptions } from '@acr/pi-agent';
 import type { LLMProvider, ProviderConfig, StructuredRequest, StructuredResponse, Message } from '@acr/pi-agent';
 
 export class PiAgentProvider implements LLMProvider {
@@ -19,7 +19,7 @@ export class PiAgentProvider implements LLMProvider {
       permission: 'plan',
       sandbox: 'read-only',
     };
-    const agent = await createPiAgent(options);
+    const agent = createPiAgent(options);
     try {
       const events = agent.send(prompt);
       let output = '';

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { createSessionStore, type SessionMessage } from "./index";
+import { createSessionStore } from "./index";
 
 describe("pi-session e2e", () => {
   let store: ReturnType<typeof createSessionStore>;
@@ -27,7 +27,7 @@ describe("pi-session e2e", () => {
     expect(first?.messages).toHaveLength(1);
     expect(second?.messageCount).toBe(2);
     expect(second?.messages).toHaveLength(2);
-    expect(second?.messages[1].content).toBe("Hi!");
+    expect(second?.messages[1]?.content).toBe("Hi!");
   });
 
   it("resumes session from last message id", async () => {
@@ -38,6 +38,6 @@ describe("pi-session e2e", () => {
 
     const resumed = await store.getMessages(session.id, { lastMessageId: "m2", limit: 10 });
     expect(resumed).toHaveLength(1);
-    expect(resumed[0].id).toBe("m3");
+    expect(resumed[0]?.id).toBe("m3");
   });
 });

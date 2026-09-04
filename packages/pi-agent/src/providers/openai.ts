@@ -12,14 +12,12 @@ import {
 import { LLMError } from '../llm-types';
 import type {
   LLMProvider,
-  Message,
   ProviderConfig,
   StructuredRequest,
   StructuredResponse,
 } from '../llm-types';
 
 const DEFAULT_BASE_URL = 'https://api.openai.com';
-const OPENAI_VERSION = '';
 
 type Sleep = (ms: number) => Promise<void>;
 
@@ -55,7 +53,6 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   private buildBody(req: StructuredRequest): Record<string, unknown> {
-    const system = mergeSystem(req.messages);
     return {
       model: this.model,
       max_tokens: req.opts?.maxTokens ?? DEFAULT_MAX_TOKENS,
@@ -73,13 +70,6 @@ export class OpenAIProvider implements LLMProvider {
   }
 }
 
-function mergeSystem(messages: readonly Message[]): string {
-return messages
-    .filter((m) => m.role === 'system')
-    .map((m) => m.content)
-    .join('\n\n');
-}
-
 function parseResponse(data: unknown): StructuredResponse {
   const root = asRecord(data);
   const choices = asArray(root?.choices);
@@ -92,7 +82,7 @@ function parseResponse(data: unknown): StructuredResponse {
   }
   let output: unknown;
   try {
-    output = JSON.parse(raw as string);
+    output = JSON.parse(raw);
   } catch {
     throw new LLMError('OpenAI function_call arguments are not valid JSON', 'bad_response', false);
   }

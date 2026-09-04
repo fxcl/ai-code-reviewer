@@ -118,13 +118,6 @@ export function createToolAccessControl(policyPath = DEFAULT_POLICY_PATH): ToolA
     }
   }
 
-  function savePolicies(): void {
-    if (memory) {
-      return;
-    }
-    writeJson(policyPath, policies);
-  }
-
   function notifyWatchers(): void {
     for (const watcher of watchers) {
       watcher();
@@ -151,6 +144,7 @@ export function createToolAccessControl(policyPath = DEFAULT_POLICY_PATH): ToolA
         createdAt: new Date(),
       };
       pendingApprovals.set(request.id, request);
+      notifyWatchers();
       return request;
     },
 
@@ -193,9 +187,9 @@ export function createSandboxController(policy: SandboxPolicy): SandboxControlle
   return {
     policy,
     enforce(context: AccessContext): void {
-      const allowedPaths = policy.allowedPaths ?? [];
       const deniedPaths = policy.deniedPaths ?? [];
-      const target = resolve(context.args.path ? String(context.args.path) : context.cwd);
+      const argPath = context.args.path;
+      const target = resolve(typeof argPath === "string" ? argPath : context.cwd);
 
       for (const denied of deniedPaths) {
         if (target.startsWith(resolve(denied))) {
@@ -263,7 +257,7 @@ function isPolicy(value: unknown): value is ToolPolicy {
   if (!isObject(value)) {
     return false;
   }
-  const record = value as Record<string, unknown>;
+  const record = value;
   return typeof record.tool === "string" && ["allow", "ask", "deny"].includes(String(record.permission));
 }
 
@@ -271,7 +265,7 @@ function isAuditEntry(value: unknown): value is AuditEntry {
   if (!isObject(value)) {
     return false;
   }
-  const record = value as Record<string, unknown>;
+  const record = value;
   return (
     typeof record.id === "string" &&
     typeof record.tool === "string" &&

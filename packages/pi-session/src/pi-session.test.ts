@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSessionStore, type SessionRecord, type SessionQuery } from "./index.ts";
+import { createSessionStore } from "./index";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

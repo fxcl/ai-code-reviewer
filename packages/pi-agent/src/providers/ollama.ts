@@ -1,6 +1,5 @@
 import { withRetry } from '../retry';
 import {
-  asArray,
   asRecord,
   DEFAULT_MAX_RETRIES,
   DEFAULT_MAX_TOKENS,

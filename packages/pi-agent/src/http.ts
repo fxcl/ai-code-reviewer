@@ -1,5 +1,3 @@
-import { setTimeout as delay } from "node:timers/promises";
-
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_TEMPERATURE = 0;
@@ -12,8 +10,8 @@ export {
   DEFAULT_TIMEOUT_MS,
 };
 
-function asArray<T>(value: unknown): readonly T[] {
-  return Array.isArray(value) ? value : [];
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -31,8 +29,8 @@ function extractUsage(
 ): { inputTokens: number; outputTokens: number } | null {
   const record = asRecord(usage);
   if (!record) return null;
-  const inputTokens = typeof record[inputKey] === "number" ? (record[inputKey] as number) : 0;
-  const outputTokens = typeof record[outputKey] === "number" ? (record[outputKey] as number) : 0;
+  const inputTokens = typeof record[inputKey] === "number" ? (record[inputKey]) : 0;
+  const outputTokens = typeof record[outputKey] === "number" ? (record[outputKey]) : 0;
   if (!inputTokens && !outputTokens) return null;
   return { inputTokens, outputTokens };
 }

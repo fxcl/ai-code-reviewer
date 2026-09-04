@@ -5,7 +5,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { Readable } from "node:stream";
+import type { Readable } from "node:stream";
 
 export { createLLMProvider, type LLMProvider, type LLMUsage, type Message, type ProviderConfig, type StructuredRequest, type StructuredResponse, type ProviderKind, type LLMErrorCode } from './llm-factory';
 export { LLMError } from './llm-factory';
@@ -79,8 +79,10 @@ export function extractMessagePayloads(
       continue;
     }
     try {
-      const parsed = JSON.parse(raw);
-      messages.push(parsed);
+      const parsed: unknown = JSON.parse(raw);
+      messages.push(
+        parsed as { id?: string | number; method?: string; params?: Record<string, unknown>; result?: unknown; error?: { message?: string } }
+      );
     } catch {
       // ignore non-JSON noise from mixed stdout/stderr
     }
@@ -272,7 +274,7 @@ export class RpcStreamReader {
         return {
           type: "tool_call",
           name: typeof params.name === "string" ? params.name : "unknown",
-          arguments: isObject(params.arguments) ? (params.arguments as Record<string, unknown>) : {},
+          arguments: isObject(params.arguments) ? (params.arguments) : {},
         };
       case "agent/event/tool_result":
         return {
@@ -291,17 +293,18 @@ export class RpcStreamReader {
   }
 
   [Symbol.asyncIterator](): AsyncIterableIterator<PiAgentEvent> {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- arrow methods in the iterator object need class access
     const self = this;
     const iterator: AsyncIterableIterator<PiAgentEvent> = {
       next: async () => {
         const value = await self.request("agent/next", undefined, 0);
-        if (value === null) return { value: undefined as unknown as PiAgentEvent, done: true };
+        if (value === null) return { value: undefined, done: true };
         const event = self.#normalizeEvent({ params: value as Record<string, unknown> });
         return { value: event, done: false };
       },
       return: async () => {
         self.close();
-        return { value: undefined as unknown as PiAgentEvent, done: true };
+        return { value: undefined, done: true };
       },
       [Symbol.asyncIterator]: () => iterator,
     };
@@ -345,20 +348,21 @@ export class ReadableQueue<T> {
   }
 
   [Symbol.asyncIterator](): AsyncIterableIterator<T> {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- arrow methods in the iterator object need class access
     const self = this;
     const iterator: AsyncIterableIterator<T> = {
       next: async () => {
-        if (self.#closed) return { value: undefined as unknown as T, done: true };
+        if (self.#closed) return { value: undefined, done: true };
         try {
           const value = await self.advance(new AbortController().signal);
           return { value, done: false };
         } catch {
-          return { value: undefined as unknown as T, done: true };
+          return { value: undefined, done: true };
         }
       },
       return: async () => {
         self.close();
-        return { value: undefined as unknown as T, done: true };
+        return { value: undefined, done: true };
       },
       [Symbol.asyncIterator]: () => iterator,
     };
@@ -439,7 +443,7 @@ export class PiAgentClient implements PiAgentRuntime {
     }
   }
 
-  async *#createAsyncIterator(message: string): AsyncIterable<PiAgentEvent> {
+  async *#createAsyncIterator(_message: string): AsyncIterable<PiAgentEvent> {
     if (!this.#reader) throw new Error("pi-coding-agent runtime is not started");
     const stream = this.#reader;
     const notifications = stream.onNotification("agent/event/text", (event) => event);

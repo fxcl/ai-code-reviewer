@@ -72,7 +72,7 @@ function readStore(path: string): Record<string, SessionRecord> {
   }
   try {
     const raw = readFileSync(path, "utf-8");
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed)) {
       return {};
     }
@@ -105,7 +105,7 @@ function readMessageStore(path: string): Record<string, SessionMessage[]> {
   }
   try {
     const raw = readFileSync(path, "utf-8");
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
     if (!isMessageRecord(parsed)) {
       return {};
     }
@@ -127,8 +127,8 @@ function isMessageRecord(value: unknown): value is Record<string, SessionMessage
 export function createSessionStore(dbPath = DEFAULT_DB_PATH): SessionStore {
   const storePath = dbPath.replace(/\.db$/, ".json");
   const messageStorePath = storePath.replace(/index\.json$/, "messages.json");
-  let cache = readStore(storePath);
-  let messageCache = readMessageStore(messageStorePath);
+  const cache = readStore(storePath);
+  const messageCache = readMessageStore(messageStorePath);
 
   return {
     async create(input: SessionCreateInput): Promise<SessionRecord> {
@@ -200,12 +200,12 @@ export function createSessionStore(dbPath = DEFAULT_DB_PATH): SessionStore {
       }
       messageCache[sessionId].push(message);
       const updatedCount = messageCache[sessionId].length;
-      session.messageCount = updatedCount;
-      session.updatedAt = new Date();
+      const updated: SessionRecord = { ...session, messageCount: updatedCount, updatedAt: new Date() };
+      cache[sessionId] = updated;
       writeStore(storePath, cache);
       writeMessageStore(messageStorePath, messageCache);
       return {
-        ...mapRecord(session),
+        ...mapRecord(updated),
         messages: messageCache[sessionId].map(mapMessage),
       };
     },

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src"],
+  "compilerOptions": {
+    "paths": {
+      "@acr/pi-agent": ["../pi-agent/src/index.ts"],
+      "@acr/pi-session": ["./src/index.ts"],
+      "@acr/pi-tools": ["../pi-tools/src/index.ts"]
+    }
+  }
+}

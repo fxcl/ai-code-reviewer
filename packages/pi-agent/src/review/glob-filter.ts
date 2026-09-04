@@ -17,10 +17,10 @@ export function partitionFiles(
   files: readonly ChangedFile[],
   config: ReviewConfig,
 ): Partitioned {
-  const isExcluded = picomatch(config.exclude as string[], { dot: true });
+  const isExcluded = picomatch([...config.exclude], { dot: true });
   const isIncluded =
     config.include.length > 0
-      ? picomatch(config.include as string[], { dot: true })
+      ? picomatch([...config.include], { dot: true })
       : null;
   const kept: ChangedFile[] = [];
   const skipped: SkippedFile[] = [];

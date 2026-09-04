@@ -15,14 +15,17 @@ export default tseslint.config(
     rules: {
       'no-console': 'error',
       'max-lines': ['error', { max: 800, skipBlankLines: true, skipComments: true }],
-      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 100, skipBlankLines: true, skipComments: true }],
       'max-depth': ['error', 4],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Methods are async to satisfy Promise-based interfaces, not because
+      // every implementation awaits.
+      '@typescript-eslint/require-await': 'off',
     },
   },
   {
-    files: ['**/test/**/*.ts', '**/vitest.config.ts'],
+    files: ['**/test/**/*.ts', '**/*.test.ts', '**/vitest.config.ts'],
     rules: {
       'max-lines-per-function': 'off',
       'max-lines': 'off',

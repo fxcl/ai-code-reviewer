@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { createSandboxController, createToolAccessControl, createToolAuditLogger, type AccessContext, type SandboxPolicy, type ToolPolicy } from "./index.ts";
+import { describe, expect, it, vi } from "vitest";
+import { createSandboxController, createToolAccessControl, createToolAuditLogger, type AccessContext, type SandboxPolicy } from "./index";
 
 describe("createToolAccessControl", () => {
   it("returns default allow policy for known tool", () => {
@@ -50,8 +50,8 @@ describe("createToolAccessControl", () => {
       { requestId: second.id, approved: false, reason: "blocked" },
     ]);
     expect(decisions).toHaveLength(2);
-    expect(decisions[0].approved).toBe(true);
-    expect(decisions[1].approved).toBe(false);
+    expect(decisions[0]?.approved).toBe(true);
+    expect(decisions[1]?.approved).toBe(false);
   });
 
   it("notifies watchers on policy reload", async () => {
@@ -99,7 +99,7 @@ describe("createToolAuditLogger", () => {
     expect(first.createdAt).toBeInstanceOf(Date);
     const all = logger.list();
     expect(all).toHaveLength(2);
-    expect(all[1].id).toBe(second.id);
+    expect(all[1]?.id).toBe(second.id);
   });
 
   it("filters entries by tool", async () => {
@@ -109,7 +109,7 @@ describe("createToolAuditLogger", () => {
 
     const filtered = logger.list({ tool: "write_file" });
     expect(filtered).toHaveLength(1);
-    expect(filtered[0].tool).toBe("write_file");
+    expect(filtered[0]?.tool).toBe("write_file");
   });
 
   it("respects limit", async () => {
