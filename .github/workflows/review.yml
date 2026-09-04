@@ -1,0 +1,22 @@
+name: AI Code Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI Code Review
+        uses: fxcl/ai-code-reviewer@main
+        with:
+          provider: openai-compatible
+          base_url: https://api.stepfun.ai/step_plan/v1
+          model: step-3.7-flash
+          api_key: ${{ secrets.STEPFUN_API_KEY }}
+          language: zh-CN
+          severity_threshold: low

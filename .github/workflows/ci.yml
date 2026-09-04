@@ -52,6 +52,8 @@ jobs:
         run: |
           if [ -n "$(git status --porcelain dist/)" ]; then
             git status --porcelain dist/
+            git diff --stat dist/ || true
+            git diff dist/ | head -40 || true
             echo "dist/ is stale or has uncommitted files; run 'pnpm build:action' and commit the result." >&2
             exit 1
           fi
