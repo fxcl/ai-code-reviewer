@@ -23,6 +23,7 @@ interface UnitOutcome {
   readonly findings: readonly Finding[];
   readonly usage: LLMUsage | null;
   readonly failed: boolean;
+  readonly error?: string;
 }
 
 interface Attempt {
@@ -64,9 +65,11 @@ async function reviewUnit(
     const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit);
     usage = addUsage(usage, repaired.usage);
     if (repaired.error === null) return succeed(unit.path, repaired.findings, usage);
-    return failWith(unit.path, usage);
+    return failWith(unit.path, usage, `output validation failed: ${repaired.error}`);
   } catch (error) {
-    if (isLLMError(error)) return failWith(unit.path, usage);
+    if (isLLMError(error)) {
+      return failWith(unit.path, usage, error instanceof Error ? error.message : String(error));
+    }
     throw error;
   }
 }
@@ -97,8 +100,8 @@ function succeed(path: string, findings: readonly Finding[], usage: LLMUsage | n
   return { path, findings, usage, failed: false };
 }
 
-function failWith(path: string, usage: LLMUsage | null): UnitOutcome {
-  return { path, findings: [], usage, failed: true };
+function failWith(path: string, usage: LLMUsage | null, error?: string): UnitOutcome {
+  return { path, findings: [], usage, failed: true, error };
 }
 
 function addUsage(accumulated: LLMUsage | null, next: LLMUsage | null): LLMUsage | null {

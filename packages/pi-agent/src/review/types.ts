@@ -99,6 +99,8 @@ export type SkipReason = 'excluded' | 'binary' | 'deleted' | 'too_large' | 'max_
 export interface SkippedFile {
   readonly path: string;
   readonly reason: SkipReason;
+  /** Underlying error detail; currently set only for llm_error. */
+  readonly detail?: string;
 }
 
 export interface ReviewSummary {

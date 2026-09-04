@@ -37562,7 +37562,16 @@ function renderSkipped(skipped, labels) {
   const groups = groupByReason(skipped);
   const lines = SKIP_ORDER.filter((reason) => groups.has(reason)).map((reason) => {
     const paths = groups.get(reason) ?? [];
-    return `- **${labels.reasonNames[reason]}** (${paths.length}): ${paths.join(", ")}`;
+    let line = `- **${labels.reasonNames[reason]}** (${paths.length}): ${paths.join(", ")}`;
+    if (reason === "llm_error") {
+      const details = [
+        ...new Set(
+          skipped.filter((s) => s.reason === "llm_error" && s.detail).map((s) => s.detail ?? "")
+        )
+      ].filter(Boolean);
+      if (details.length > 0) line += ` \u2014 ${details.join(" | ")}`;
+    }
+    return line;
   });
   return `### ${labels.skippedHeading}
 ${lines.join("\n")}`;
@@ -37599,9 +37608,11 @@ async function reviewUnit(provider, unit, meta, config) {
     const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit);
     usage = addUsage(usage, repaired.usage);
     if (repaired.error === null) return succeed(unit.path, repaired.findings, usage);
-    return failWith(unit.path, usage);
+    return failWith(unit.path, usage, `output validation failed: ${repaired.error}`);
   } catch (error2) {
-    if (isLLMError(error2)) return failWith(unit.path, usage);
+    if (isLLMError(error2)) {
+      return failWith(unit.path, usage, error2 instanceof Error ? error2.message : String(error2));
+    }
     throw error2;
   }
 }
@@ -37624,8 +37635,8 @@ function repairMessage(error2) {
 function succeed(path, findings, usage) {
   return { path, findings, usage, failed: false };
 }
-function failWith(path, usage) {
-  return { path, findings: [], usage, failed: true };
+function failWith(path, usage, error2) {
+  return { path, findings: [], usage, failed: true, error: error2 };
 }
 function addUsage(accumulated, next) {
   if (next === null) return accumulated;

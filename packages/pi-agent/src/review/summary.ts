@@ -121,7 +121,16 @@ function renderSkipped(skipped: readonly SkippedFile[], labels: Labels): string 
   const groups = groupByReason(skipped);
   const lines = SKIP_ORDER.filter((reason) => groups.has(reason)).map((reason) => {
     const paths = groups.get(reason) ?? [];
-    return `- **${labels.reasonNames[reason]}** (${paths.length}): ${paths.join(', ')}`;
+    let line = `- **${labels.reasonNames[reason]}** (${paths.length}): ${paths.join(', ')}`;
+    if (reason === 'llm_error') {
+      const details = [
+        ...new Set(
+          skipped.filter((s) => s.reason === 'llm_error' && s.detail).map((s) => s.detail ?? ''),
+        ),
+      ].filter(Boolean);
+      if (details.length > 0) line += ` — ${details.join(' | ')}`;
+    }
+    return line;
   });
   return `### ${labels.skippedHeading}\n${lines.join('\n')}`;
 }
