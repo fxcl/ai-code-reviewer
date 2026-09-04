@@ -15,7 +15,7 @@ jobs:
         uses: fxcl/ai-code-reviewer@main
         with:
           provider: openai-compatible
-          base_url: https://api.stepfun.ai/step_plan/v1
+          base_url: https://api.stepfun.ai/step_plan
           model: step-3.7-flash
           api_key: ${{ secrets.STEPFUN_API_KEY }}
           language: zh-CN
