@@ -8,20 +8,28 @@ on:
 permissions:
   contents: read
 
+env:
+  # Corepack auto-downloads pnpm per the packageManager field; suppress the
+  # interactive prompt that would hang CI.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-
-      - uses: pnpm/action-setup@v6
 
       # Node 22 for the dev toolchain (pnpm 11 requires it); the action itself
       # still runs on the node24 runtime — dist is bundled with target=node24.
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: pnpm
+
+      # pnpm/action-setup's self-installer hangs; corepack (bundled with Node)
+      # installs pnpm 11.10.0 from the npm registry instead.
+      - name: Enable corepack (installs pnpm per packageManager)
+        run: corepack enable
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
