@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@acr/pi-agent": ["packages/pi-agent/src/index.ts"],
+      "@acr/pi-session": ["packages/pi-session/src/index.ts"],
+      "@acr/pi-tools": ["packages/pi-tools/src/index.ts"]
+    }
+  }
+}

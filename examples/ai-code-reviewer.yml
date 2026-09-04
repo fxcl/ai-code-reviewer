@@ -1,0 +1,37 @@
+# .github/ai-code-reviewer.yml
+#
+# Repository configuration for ai-code-reviewer.
+#
+# This file is read from the BASE repository's default branch via the GitHub API,
+# so pull requests from forks cannot change how their own code is reviewed.
+#
+# Precedence (lowest to highest): built-in defaults < this file < action inputs.
+# Every key is optional — omit anything you want to leave at its default.
+
+# ── Provider ──────────────────────────────────────────────────────────────────
+provider: anthropic            # anthropic | openai | ollama | openai-compatible
+model: claude-sonnet-5         # review model (balances quality and cost)
+base_url: ""                   # required for openai-compatible; also overrides the
+                               # endpoint for ollama (e.g. http://localhost:11434)
+# The API key is NEVER read from this file. Pass it via the `api_key` action input
+# from a GitHub secret — keeping keys out of the repository is a hard rule.
+
+# ── Review behaviour ──────────────────────────────────────────────────────────
+review:
+  language: en                 # comment language: en | zh-CN
+  severity_threshold: medium   # drop findings below this: critical | high | medium | low
+  max_comments: 20             # hard cap on inline comments per PR (prevents noise)
+  include:                     # picomatch globs; empty list = review everything changed
+    - "src/**"
+    - "packages/**"
+  exclude:                     # skip these paths (globs)
+    - "**/*.lock"
+    - "dist/**"
+    - "**/__snapshots__/**"
+  incremental: true            # on new pushes, review only the newly added commits
+  fail_on: none                # none | critical — whether a critical finding fails the check
+
+# ── Custom guidelines (optional) ──────────────────────────────────────────────
+# Path to a Markdown file (also read from the base branch) containing
+# project-specific review rules. Its contents are injected into the model prompt.
+rules_file: ".github/review-guidelines.md"

@@ -1,0 +1,24 @@
+# Third-party endpoint: any OpenAI-compatible Chat Completions API.
+# Works with DeepSeek, Zhipu GLM, Moonshot Kimi, Together, Groq, vLLM, LM Studio, etc.
+# This example uses DeepSeek; change base_url / model / secret for another provider.
+name: AI Code Review (OpenAI-compatible)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI Code Review
+        uses: fxcl/ai-code-reviewer@v1
+        with:
+          provider: openai-compatible
+          model: deepseek-chat
+          # base_url is the part before /chat/completions.
+          base_url: https://api.deepseek.com/v1
+          api_key: ${{ secrets.DEEPSEEK_API_KEY }}

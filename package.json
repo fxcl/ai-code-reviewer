@@ -1,0 +1,27 @@
+{
+  "name": "ai-code-reviewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source, self-hosted AI code reviewer for GitHub pull requests. Bring your own model.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.10.0",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "test": "pnpm -r test",
+    "build:action": "node scripts/build-action.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@vitest/coverage-v8": "^3.0.5",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.20.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^3.0.5"
+  }
+}

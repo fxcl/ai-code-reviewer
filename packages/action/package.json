@@ -1,0 +1,28 @@
+{
+  "name": "@acr/action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub Action adapter: PR context, config resolution, review posting",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "test": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acr/pi-agent": "file:../pi-agent",
+    "@acr/pi-session": "file:../pi-session",
+    "@acr/pi-tools": "file:../pi-tools",
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0",
+    "yaml": "^2.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@vitest/coverage-v8": "^3.0.5",
+    "typescript": "^5.7.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.0.5"
+  }
+}

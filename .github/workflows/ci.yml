@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      # Node 22 for the dev toolchain (pnpm 11 requires it); the action itself
+      # still runs on the node24 runtime — dist is bundled with target=node24.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint (zero warnings)
+        run: pnpm lint
+
+      - name: Test with coverage thresholds
+        run: pnpm test
+
+      - name: Build action bundle
+        run: pnpm build:action
+
+      - name: Verify committed dist is fresh
+        # Catches both modified tracked files and never-committed new files
+        # (e.g. dist/package.json), which `git diff --exit-code` alone misses.
+        run: |
+          if [ -n "$(git status --porcelain dist/)" ]; then
+            git status --porcelain dist/
+            echo "dist/ is stale or has uncommitted files; run 'pnpm build:action' and commit the result." >&2
+            exit 1
+          fi

@@ -1,0 +1,79 @@
+name: 'AI Code Reviewer'
+description: >-
+  Self-hosted AI code review on every pull request. Bring your own model:
+  Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint. Private by design.
+author: 'ai-code-reviewer contributors'
+
+branding:
+  icon: 'eye'
+  color: 'purple'
+
+inputs:
+  github_token:
+    description: 'GitHub token used to read the PR and post reviews.'
+    required: false
+    default: ${{ github.token }}
+  provider:
+    description: >-
+      LLM provider: anthropic | openai | ollama | openai-compatible.
+      Default: anthropic (applied after the repo config file, so the config
+      file can override it).
+    required: false
+  model:
+    description: >-
+      Model identifier passed to the provider. Default: claude-sonnet-5
+      (applied after the repo config file).
+    required: false
+  api_key:
+    description: >-
+      Provider API key. Falls back to ANTHROPIC_API_KEY / OPENAI_API_KEY /
+      LLM_API_KEY environment variables. Not needed for ollama.
+    required: false
+  base_url:
+    description: 'API base URL. Required for openai-compatible; optional override otherwise.'
+    required: false
+  config_path:
+    description: 'Path of the repo config file, read from the base branch.'
+    required: false
+    default: '.github/ai-code-reviewer.yml'
+  language:
+    description: 'Review comment language: en | zh-CN.'
+    required: false
+  severity_threshold:
+    description: 'Drop findings below this severity: critical | high | medium | low.'
+    required: false
+  max_comments:
+    description: 'Hard cap on inline comments per review.'
+    required: false
+  include:
+    description: 'Comma- or newline-separated include globs. Empty means all files.'
+    required: false
+  exclude:
+    description: 'Comma- or newline-separated exclude globs.'
+    required: false
+  max_files:
+    description: 'Maximum number of changed files to review.'
+    required: false
+  incremental:
+    description: >-
+      Review only commits pushed since the last review (true/false).
+      Default: true (applied after the repo config file).
+    required: false
+  fail_on:
+    description: >-
+      Fail the check when findings at this severity exist: none | critical.
+      Default: none (applied after the repo config file).
+    required: false
+  concurrency:
+    description: 'Number of concurrent LLM calls.'
+    required: false
+
+outputs:
+  findings_count:
+    description: 'Total number of findings reported.'
+  critical_count:
+    description: 'Number of critical findings reported.'
+
+runs:
+  using: 'node24'
+  main: 'dist/index.js'

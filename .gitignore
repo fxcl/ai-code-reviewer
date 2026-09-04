@@ -1,0 +1,9 @@
+node_modules/
+coverage/
+*.log
+.DS_Store
+.pi/
+*.tsbuildinfo
+.dirac-cache/
+.beadsmith-cache/packages/action/package-lock.json
+packages/pi-agent/package-lock.json

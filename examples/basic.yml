@@ -1,0 +1,24 @@
+# Minimal setup: review every pull request with Anthropic Claude.
+# Copy this file to .github/workflows/ai-code-review.yml in your repository.
+name: AI Code Review
+
+on:
+  pull_request:
+
+# Least-privilege permissions: read the diff, write inline review comments.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      # No `actions/checkout` needed — the action fetches the diff via the
+      # GitHub API and never executes the code under review.
+      - name: AI Code Review
+        uses: fxcl/ai-code-reviewer@v1
+        with:
+          # Anthropic Claude is the default provider (model: claude-sonnet-5).
+          # Add ANTHROPIC_API_KEY under Settings → Secrets and variables → Actions.
+          api_key: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "vitest.config.ts"],
+  "compilerOptions": {
+    "paths": {
+      "@acr/pi-agent": ["./src/index.ts"],
+      "@acr/pi-agent/review": ["./src/review/index.ts"],
+      "@acr/pi-session": ["../pi-session/src/index.ts"],
+      "@acr/pi-tools": ["../pi-tools/src/index.ts"]
+    }
+  }
+}
