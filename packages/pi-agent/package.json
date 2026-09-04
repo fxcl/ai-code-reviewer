@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "picomatch": "^4.0.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
