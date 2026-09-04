@@ -58,14 +58,17 @@ export class OpenAIProvider implements LLMProvider {
       max_tokens: req.opts?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: req.opts?.temperature ?? DEFAULT_TEMPERATURE,
       messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
-      functions: [
+      tools: [
         {
-          name: req.schemaName,
-          description: `Report the result by calling ${req.schemaName}.`,
-          parameters: req.schema,
+          type: 'function',
+          function: {
+            name: req.schemaName,
+            description: `Report the result by calling ${req.schemaName}.`,
+            parameters: req.schema,
+          },
         },
       ],
-      function_call: { name: req.schemaName },
+      tool_choice: { type: 'function', function: { name: req.schemaName } },
     };
   }
 }
@@ -75,10 +78,18 @@ function parseResponse(data: unknown): StructuredResponse {
   const choices = asArray(root?.choices);
   const choice = choices && choices[0] ? asRecord(choices[0]) : null;
   const message = choice && choice.message ? asRecord(choice.message) : null;
-  const functionCall = message && message.function_call ? asRecord(message.function_call) : null;
-  const raw = typeof functionCall?.arguments === "string" ? functionCall.arguments : null;
+  const toolCalls = message ? asArray(message.tool_calls) : [];
+  const firstCall = toolCalls[0] ? asRecord(toolCalls[0]) : null;
+  const toolCall = firstCall?.function ? asRecord(firstCall.function) : null;
+  const legacyCall = message && message.function_call ? asRecord(message.function_call) : null;
+  const raw =
+    typeof toolCall?.arguments === "string"
+      ? toolCall.arguments
+      : typeof legacyCall?.arguments === "string"
+        ? legacyCall.arguments
+        : null;
   if (!raw) {
-    throw new LLMError('OpenAI response contained no function_call arguments', 'bad_response', false);
+    throw new LLMError('OpenAI response contained no tool call arguments', 'bad_response', false);
   }
   let output: unknown;
   try {
