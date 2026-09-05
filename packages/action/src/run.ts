@@ -32,7 +32,6 @@ interface PublishArgs {
   readonly resolved: ResolvedConfig;
   readonly result: ReviewResult;
   readonly files: readonly ChangedFile[];
-  readonly sticky: StickyState | null;
   readonly language: CommentLanguage;
   readonly providerLabel: string;
 }
@@ -65,7 +64,7 @@ async function executeReview(
   const ctx = deps.client.context;
   const resolved = await loadConfig(deps);
   const sticky = await deps.client.getStickyState();
-  if (sticky !== null && sticky.sha === ctx.headSha) {
+  if (sticky !== null && !sticky.partial && sticky.sha === ctx.headSha) {
     deps.log.info(`Head ${ctx.headSha} already reviewed; skipping.`);
     setZeroOutputs(deps);
     return;
@@ -74,12 +73,12 @@ async function executeReview(
   const providerLabel = `${resolved.providerConfig.provider} / ${resolved.providerConfig.model}`;
   const files = parseUnifiedDiff(await fetchReviewDiff(deps.client, resolved, sticky, deps.log));
   if (files.length === 0) {
-    await publishEmpty(deps, ctx, language, providerLabel, sticky);
+    await publishEmpty(deps, ctx, language, providerLabel);
     return;
   }
   const provider = providerFactory(resolved.providerConfig);
   const result = await review(toRequest(ctx, files, resolved.reviewConfig), provider);
-  await publishResult(deps, { ctx, resolved, result, files, sticky, language, providerLabel });
+  await publishResult(deps, { ctx, resolved, result, files, language, providerLabel });
 }
 
 async function loadConfig(deps: RunDeps): Promise<ResolvedConfig> {
@@ -98,7 +97,9 @@ async function fetchReviewDiff(
   sticky: StickyState | null,
   log: RunLogger,
 ): Promise<string> {
-  if (!(resolved.runtime.incremental && sticky !== null)) {
+  // A partial sticky means the last run hit LLM failures at that SHA, so the
+  // incremental diff since it would be empty — re-review the full diff instead.
+  if (!(resolved.runtime.incremental && sticky !== null && !sticky.partial)) {
     return client.fetchDiff();
   }
   try {
@@ -118,10 +119,16 @@ async function publishResult(deps: RunDeps, args: PublishArgs): Promise<void> {
     comments.length > 0
       ? (await deps.client.postReview(comments, buildAnchorable(args.files))).dropped
       : [];
+  // LLM failures make this review incomplete: mark the sticky partial so the
+  // next run re-reviews instead of trusting incremental state.
+  const partial = args.result.summary.skipped.some((skip) => skip.reason === 'llm_error');
   const body = buildStickyBody(args.result, toMeta(args.ctx), args.language, args.providerLabel, {
     dropped,
+    partial,
   });
-  await deps.client.upsertSticky(body, args.sticky);
+  // Re-resolve the sticky comment at publish time: concurrent runs started
+  // before ours may have created it after our initial lookup.
+  await deps.client.upsertSticky(body);
   emitOutputs(deps, args.result);
   await deps.writeSummary(renderSummaryMarkdown(args.result, args.language));
   maybeFail(deps, args.resolved.runtime.failOn, args.result.summary.bySeverity.critical);
@@ -132,12 +139,11 @@ async function publishEmpty(
   ctx: PRContext,
   language: CommentLanguage,
   providerLabel: string,
-  sticky: StickyState | null,
 ): Promise<void> {
   const body = buildStickyBody(EMPTY_RESULT, toMeta(ctx), language, providerLabel, {
     emptyDiff: true,
   });
-  await deps.client.upsertSticky(body, sticky);
+  await deps.client.upsertSticky(body);
   setZeroOutputs(deps);
   await deps.writeSummary(renderSummaryMarkdown(EMPTY_RESULT, language));
   deps.log.info('No reviewable files in the diff; recorded sticky and skipped review.');

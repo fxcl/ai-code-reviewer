@@ -15,6 +15,8 @@ export interface StickyOptions {
   readonly dropped?: readonly ReviewComment[];
   /** When true, render a "nothing to review" note instead of a clean summary. */
   readonly emptyDiff?: boolean;
+  /** True when the review hit LLM failures; recorded in the sticky marker. */
+  readonly partial?: boolean;
 }
 
 const SEVERITY_EMOJI: Readonly<Record<Severity, string>> = {
@@ -62,7 +64,7 @@ export function buildStickyBody(
   providerLabel: string,
   options: StickyOptions = {},
 ): string {
-  const sections: string[] = [markerLine(meta.headSha)];
+  const sections: string[] = [markerLine(meta.headSha, options.partial === true)];
   if (options.emptyDiff === true) sections.push(NOTHING_TO_REVIEW[language]);
   sections.push(renderSummaryMarkdown(result, language));
   const dropped = options.dropped ?? [];
@@ -89,8 +91,9 @@ function footer(finding: Finding, language: CommentLanguage): string {
   return `<sub>ai-code-reviewer · ${finding.severity} · ${finding.category} · ${label} ${confidence}</sub>`;
 }
 
-function markerLine(headSha: string): string {
-  return `${STICKY_MARKER_PREFIX} ${JSON.stringify({ sha: headSha })} -->`;
+function markerLine(headSha: string, partial: boolean): string {
+  const state = partial ? { sha: headSha, partial: true } : { sha: headSha };
+  return `${STICKY_MARKER_PREFIX} ${JSON.stringify(state)} -->`;
 }
 
 function droppedSection(dropped: readonly ReviewComment[], language: CommentLanguage): string {

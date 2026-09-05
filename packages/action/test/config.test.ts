@@ -21,6 +21,7 @@ function baseInputs(overrides: Partial<RawInputs> = {}): RawInputs {
     include: undefined,
     exclude: undefined,
     maxFiles: undefined,
+    maxCompletionTokens: undefined,
     incremental: undefined,
     failOn: undefined,
     concurrency: undefined,

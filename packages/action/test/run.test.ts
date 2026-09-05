@@ -75,6 +75,7 @@ function baseInputs(overrides: Partial<RawInputs> = {}): RawInputs {
     include: undefined,
     exclude: undefined,
     maxFiles: undefined,
+    maxCompletionTokens: undefined,
     incremental: true,
     failOn: 'none',
     concurrency: undefined,
@@ -141,7 +142,7 @@ describe('run', () => {
 
   it('skips when the head SHA was already reviewed', async () => {
     const client = makeClient({
-      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: HEAD_SHA })),
+      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: HEAD_SHA, partial: false })),
     });
     const deps = makeDeps({ client });
     await run(deps);
@@ -155,7 +156,7 @@ describe('run', () => {
 
   it('fetches an incremental diff from the recorded SHA', async () => {
     const client = makeClient({
-      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA' })),
+      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA', partial: false })),
     });
     await run(makeDeps({ client }));
 
@@ -163,9 +164,22 @@ describe('run', () => {
     expect(client.fetchDiff).not.toHaveBeenCalled();
   });
 
+  it('re-reviews the full diff when the sticky is partial even at the same SHA', async () => {
+    const client = makeClient({
+      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: HEAD_SHA, partial: true })),
+    });
+    const deps = makeDeps({ client });
+    await run(deps);
+
+    expect(deps.log.info).not.toHaveBeenCalledWith(expect.stringContaining('already reviewed'));
+    expect(client.fetchDiff).toHaveBeenCalledOnce();
+    expect(client.fetchDiffSince).not.toHaveBeenCalled();
+    expect(client.postReview).toHaveBeenCalledOnce();
+  });
+
   it('fetches the full diff when incremental is disabled', async () => {
     const client = makeClient({
-      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA' })),
+      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA', partial: false })),
     });
     await run(makeDeps({ client, inputs: baseInputs({ incremental: false }) }));
 
@@ -175,7 +189,7 @@ describe('run', () => {
 
   it('falls back to a full diff when the incremental diff fails', async () => {
     const client = makeClient({
-      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA' })),
+      getStickyState: vi.fn(() => Promise.resolve({ commentId: 1, sha: 'OLDSHA', partial: false })),
       fetchDiffSince: vi.fn(() => Promise.reject(new Error('Not Found'))),
     });
     const deps = makeDeps({ client });

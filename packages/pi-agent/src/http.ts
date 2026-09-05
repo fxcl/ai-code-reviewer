@@ -59,7 +59,16 @@ export async function postJson<T>(opts: {
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text}`);
+      const error = new Error(`HTTP ${response.status}: ${text}`);
+      const retryAfter = response.headers.get("retry-after");
+      const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        (error as Error & { retryAfterMs?: number }).retryAfterMs = Math.min(
+          seconds * 1000,
+          30_000,
+        );
+      }
+      throw error;
     }
     return (await response.json()) as T;
   } finally {

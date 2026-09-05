@@ -9,7 +9,8 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: { maxRetries?: nu
       const message = error instanceof Error ? error.message : String(error);
       const retryable = /timeout|ECONNRESET|EPIPE|rate.limit|429|5\d\d/.test(message);
       if (!retryable || ++attempt > maxRetries) throw error;
-      await sleep(200 * attempt);
+      const retryAfterMs = (error as { retryAfterMs?: number }).retryAfterMs;
+      await sleep(retryAfterMs ?? 200 * attempt);
     }
   }
 }

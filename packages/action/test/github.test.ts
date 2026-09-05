@@ -187,7 +187,11 @@ describe('getStickyState', () => {
     octokit.rest.issues.listComments.mockResolvedValue({
       data: [comment(1, 'hello'), stickyComment(99, 'abc123')],
     });
-    expect(await makeClient(octokit).getStickyState()).toEqual({ commentId: 99, sha: 'abc123' });
+    expect(await makeClient(octokit).getStickyState()).toEqual({
+      commentId: 99,
+      sha: 'abc123',
+      partial: false,
+    });
   });
 
   it('paginates until it finds the sticky comment', async () => {
@@ -196,7 +200,11 @@ describe('getStickyState', () => {
     octokit.rest.issues.listComments
       .mockResolvedValueOnce({ data: fullPage })
       .mockResolvedValueOnce({ data: [stickyComment(5, 'deadbeef')] });
-    expect(await makeClient(octokit).getStickyState()).toEqual({ commentId: 5, sha: 'deadbeef' });
+    expect(await makeClient(octokit).getStickyState()).toEqual({
+      commentId: 5,
+      sha: 'deadbeef',
+      partial: false,
+    });
     expect(octokit.rest.issues.listComments).toHaveBeenCalledTimes(2);
   });
 
@@ -204,7 +212,22 @@ describe('getStickyState', () => {
     const octokit = makeOctokit();
     const body = `${STICKY_MARKER_PREFIX} {"sha":"realsha"} -->\n\nModel text: {"sha":"evilsha"}`;
     octokit.rest.issues.listComments.mockResolvedValue({ data: [{ id: 3, body }] });
-    expect(await makeClient(octokit).getStickyState()).toEqual({ commentId: 3, sha: 'realsha' });
+    expect(await makeClient(octokit).getStickyState()).toEqual({
+      commentId: 3,
+      sha: 'realsha',
+      partial: false,
+    });
+  });
+
+  it('parses the partial flag from the marker line', async () => {
+    const octokit = makeOctokit();
+    const body = `${STICKY_MARKER_PREFIX} {"sha":"realsha","partial":true} -->\n\nSummary`;
+    octokit.rest.issues.listComments.mockResolvedValue({ data: [{ id: 4, body }] });
+    expect(await makeClient(octokit).getStickyState()).toEqual({
+      commentId: 4,
+      sha: 'realsha',
+      partial: true,
+    });
   });
 
   it('stops after a short page and returns null', async () => {
@@ -218,7 +241,7 @@ describe('getStickyState', () => {
 describe('upsertSticky', () => {
   it('updates an existing sticky comment', async () => {
     const octokit = makeOctokit();
-    await makeClient(octokit).upsertSticky('new body', { commentId: 42, sha: 'x' });
+    await makeClient(octokit).upsertSticky('new body', { commentId: 42, sha: 'x', partial: false });
     expect(octokit.rest.issues.updateComment).toHaveBeenCalledWith({
       owner: 'o',
       repo: 'r',

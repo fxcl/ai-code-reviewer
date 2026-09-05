@@ -37602,10 +37602,10 @@ async function reviewUnit(provider, unit, meta, config) {
   const base = buildMessages(unit, meta, config);
   let usage = null;
   try {
-    const first = await attempt(provider, base, unit);
+    const first = await attempt(provider, base, unit, config);
     usage = addUsage(usage, first.usage);
     if (first.error === null) return succeed(unit.path, first.findings, usage);
-    const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit);
+    const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit, config);
     usage = addUsage(usage, repaired.usage);
     if (repaired.error === null) return succeed(unit.path, repaired.findings, usage);
     return failWith(unit.path, usage, `output validation failed: ${repaired.error}`);
@@ -37616,11 +37616,12 @@ async function reviewUnit(provider, unit, meta, config) {
     throw error2;
   }
 }
-async function attempt(provider, messages, unit) {
+async function attempt(provider, messages, unit, config) {
   const request = {
     messages,
     schema: FINDINGS_SCHEMA,
-    schemaName: SCHEMA_NAME
+    schemaName: SCHEMA_NAME,
+    ...config.maxCompletionTokens !== void 0 ? { opts: { maxTokens: config.maxCompletionTokens } } : {}
   };
   const response = await provider.complete(request);
   const parsed = parseFindings(response.output, unit);
@@ -37722,7 +37723,7 @@ function findingToComment(finding, language) {
   };
 }
 function buildStickyBody(result, meta, language, providerLabel, options = {}) {
-  const sections = [markerLine(meta.headSha)];
+  const sections = [markerLine(meta.headSha, options.partial === true)];
   if (options.emptyDiff === true) sections.push(NOTHING_TO_REVIEW[language]);
   sections.push(renderSummaryMarkdown(result, language));
   const dropped = options.dropped ?? [];
@@ -37746,8 +37747,9 @@ function footer(finding, language) {
   const label = CONFIDENCE_LABEL[language];
   return `<sub>ai-code-reviewer \xB7 ${finding.severity} \xB7 ${finding.category} \xB7 ${label} ${confidence}</sub>`;
 }
-function markerLine(headSha) {
-  return `${STICKY_MARKER_PREFIX} ${JSON.stringify({ sha: headSha })} -->`;
+function markerLine(headSha, partial) {
+  const state = partial ? { sha: headSha, partial: true } : { sha: headSha };
+  return `${STICKY_MARKER_PREFIX} ${JSON.stringify(state)} -->`;
 }
 function droppedSection(dropped, language) {
   const items = dropped.map((comment) => `- \`${comment.path}:${comment.line}\``);
@@ -37921,7 +37923,7 @@ function findSticky(comments) {
     const body = asString(comment["body"]);
     const id = comment["id"];
     if (typeof id === "number" && body !== void 0 && body.startsWith(STICKY_MARKER_PREFIX)) {
-      return { commentId: id, sha: extractSha(body) };
+      return { commentId: id, sha: extractSha(body), partial: extractPartial(body) };
     }
   }
   return null;
@@ -37930,6 +37932,10 @@ function extractSha(body) {
   const firstLine = body.split("\n", 1)[0] ?? "";
   const match = /"sha"\s*:\s*"([^"]*)"/.exec(firstLine);
   return match?.[1] ?? "";
+}
+function extractPartial(body) {
+  const firstLine = body.split("\n", 1)[0] ?? "";
+  return /"partial"\s*:\s*true/.test(firstLine);
 }
 function decodeContent(data) {
   const record = asRecord(data);
@@ -37986,6 +37992,7 @@ function parseRawInputs(getInput2, env, onSecret = noop) {
     include: parseList(getInput2("include")),
     exclude: parseList(getInput2("exclude")),
     maxFiles: parsePositiveInt("max_files", getInput2("max_files")),
+    maxCompletionTokens: parsePositiveInt("max_tokens", getInput2("max_tokens")),
     incremental: parseOptionalBoolean("incremental", getInput2("incremental")),
     failOn: optional(getInput2("fail_on")),
     concurrency: parsePositiveInt("concurrency", getInput2("concurrency"))
@@ -38062,7 +38069,8 @@ async function withRetry(fn, opts = {}) {
       const message = error2 instanceof Error ? error2.message : String(error2);
       const retryable = /timeout|ECONNRESET|EPIPE|rate.limit|429|5\d\d/.test(message);
       if (!retryable || ++attempt2 > maxRetries) throw error2;
-      await sleep(200 * attempt2);
+      const retryAfterMs = error2.retryAfterMs;
+      await sleep(retryAfterMs ?? 200 * attempt2);
     }
   }
 }
@@ -38105,7 +38113,16 @@ async function postJson(opts) {
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(`HTTP ${response.status}: ${text}`);
+      const error2 = new Error(`HTTP ${response.status}: ${text}`);
+      const retryAfter = response.headers.get("retry-after");
+      const seconds = retryAfter === null ? Number.NaN : Number(retryAfter);
+      if (Number.isFinite(seconds) && seconds > 0) {
+        error2.retryAfterMs = Math.min(
+          seconds * 1e3,
+          3e4
+        );
+      }
+      throw error2;
     }
     return await response.json();
   } finally {
@@ -38705,7 +38722,8 @@ var KNOWN_REVIEW = /* @__PURE__ */ new Set([
   "include",
   "exclude",
   "incremental",
-  "fail_on"
+  "fail_on",
+  "max_tokens"
 ]);
 var EMPTY_REVIEW = {
   language: void 0,
@@ -38714,7 +38732,8 @@ var EMPTY_REVIEW = {
   include: void 0,
   exclude: void 0,
   incremental: void 0,
-  failOn: void 0
+  failOn: void 0,
+  maxCompletionTokens: void 0
 };
 function resolveConfig(raw, fileYaml, rulesContent) {
   const file = parseFileConfig(fileYaml, raw.configPath);
@@ -38749,6 +38768,7 @@ function mergeReviewConfig(raw, file, rulesContent) {
     exclude: raw.exclude ?? file.review.exclude ?? DEFAULT_CONFIG.exclude,
     maxFiles: raw.maxFiles ?? DEFAULT_CONFIG.maxFiles,
     concurrency: raw.concurrency ?? DEFAULT_CONFIG.concurrency,
+    maxCompletionTokens: raw.maxCompletionTokens ?? file.review.maxCompletionTokens,
     guidelines: rulesContent
   };
 }
@@ -38790,7 +38810,8 @@ function readReview(value, warnings, configPath) {
     include: asStringArray(rec["include"]),
     exclude: asStringArray(rec["exclude"]),
     incremental: asBoolean(rec["incremental"]),
-    failOn: asString2(rec["fail_on"])
+    failOn: asString2(rec["fail_on"]),
+    maxCompletionTokens: asPositiveInt(rec["max_tokens"])
   };
 }
 function collectUnknown(obj, known, warnings, configPath, scope) {
@@ -38878,7 +38899,7 @@ async function executeReview(deps, providerFactory) {
   const ctx = deps.client.context;
   const resolved = await loadConfig(deps);
   const sticky = await deps.client.getStickyState();
-  if (sticky !== null && sticky.sha === ctx.headSha) {
+  if (sticky !== null && !sticky.partial && sticky.sha === ctx.headSha) {
     deps.log.info(`Head ${ctx.headSha} already reviewed; skipping.`);
     setZeroOutputs(deps);
     return;
@@ -38887,12 +38908,12 @@ async function executeReview(deps, providerFactory) {
   const providerLabel = `${resolved.providerConfig.provider} / ${resolved.providerConfig.model}`;
   const files = parseUnifiedDiff(await fetchReviewDiff(deps.client, resolved, sticky, deps.log));
   if (files.length === 0) {
-    await publishEmpty(deps, ctx, language, providerLabel, sticky);
+    await publishEmpty(deps, ctx, language, providerLabel);
     return;
   }
   const provider = providerFactory(resolved.providerConfig);
   const result = await review(toRequest(ctx, files, resolved.reviewConfig), provider);
-  await publishResult(deps, { ctx, resolved, result, files, sticky, language, providerLabel });
+  await publishResult(deps, { ctx, resolved, result, files, language, providerLabel });
 }
 async function loadConfig(deps) {
   const fileYaml = await deps.client.fetchFileFromBaseDefaultBranch(deps.inputs.configPath);
@@ -38903,7 +38924,7 @@ async function loadConfig(deps) {
   return resolved;
 }
 async function fetchReviewDiff(client, resolved, sticky, log) {
-  if (!(resolved.runtime.incremental && sticky !== null)) {
+  if (!(resolved.runtime.incremental && sticky !== null && !sticky.partial)) {
     return client.fetchDiff();
   }
   try {
@@ -38919,19 +38940,21 @@ async function fetchReviewDiff(client, resolved, sticky, log) {
 async function publishResult(deps, args) {
   const comments = args.result.findings.map((finding) => findingToComment(finding, args.language));
   const dropped = comments.length > 0 ? (await deps.client.postReview(comments, buildAnchorable(args.files))).dropped : [];
+  const partial = args.result.summary.skipped.some((skip) => skip.reason === "llm_error");
   const body = buildStickyBody(args.result, toMeta(args.ctx), args.language, args.providerLabel, {
-    dropped
+    dropped,
+    partial
   });
-  await deps.client.upsertSticky(body, args.sticky);
+  await deps.client.upsertSticky(body);
   emitOutputs(deps, args.result);
   await deps.writeSummary(renderSummaryMarkdown(args.result, args.language));
   maybeFail(deps, args.resolved.runtime.failOn, args.result.summary.bySeverity.critical);
 }
-async function publishEmpty(deps, ctx, language, providerLabel, sticky) {
+async function publishEmpty(deps, ctx, language, providerLabel) {
   const body = buildStickyBody(EMPTY_RESULT, toMeta(ctx), language, providerLabel, {
     emptyDiff: true
   });
-  await deps.client.upsertSticky(body, sticky);
+  await deps.client.upsertSticky(body);
   setZeroOutputs(deps);
   await deps.writeSummary(renderSummaryMarkdown(EMPTY_RESULT, language));
   deps.log.info("No reviewable files in the diff; recorded sticky and skipped review.");

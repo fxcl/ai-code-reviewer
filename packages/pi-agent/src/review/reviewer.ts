@@ -59,10 +59,10 @@ async function reviewUnit(
   const base = buildMessages(unit, meta, config);
   let usage: LLMUsage | null = null;
   try {
-    const first = await attempt(provider, base, unit);
+    const first = await attempt(provider, base, unit, config);
     usage = addUsage(usage, first.usage);
     if (first.error === null) return succeed(unit.path, first.findings, usage);
-    const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit);
+    const repaired = await attempt(provider, [...base, repairMessage(first.error)], unit, config);
     usage = addUsage(usage, repaired.usage);
     if (repaired.error === null) return succeed(unit.path, repaired.findings, usage);
     return failWith(unit.path, usage, `output validation failed: ${repaired.error}`);
@@ -78,11 +78,15 @@ async function attempt(
   provider: LLMProvider,
   messages: readonly Message[],
   unit: ReviewUnit,
+  config: ReviewConfig,
 ): Promise<Attempt> {
   const request: StructuredRequest = {
     messages,
     schema: FINDINGS_SCHEMA,
     schemaName: SCHEMA_NAME,
+    ...(config.maxCompletionTokens !== undefined
+      ? { opts: { maxTokens: config.maxCompletionTokens } }
+      : {}),
   };
   const response = await provider.complete(request);
   const parsed = parseFindings(response.output, unit);

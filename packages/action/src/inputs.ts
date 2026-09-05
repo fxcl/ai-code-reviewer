@@ -20,6 +20,7 @@ export interface RawInputs {
   readonly include: readonly string[] | undefined;
   readonly exclude: readonly string[] | undefined;
   readonly maxFiles: number | undefined;
+  readonly maxCompletionTokens: number | undefined;
   readonly incremental: boolean | undefined;
   readonly failOn: string | undefined;
   readonly concurrency: number | undefined;
@@ -61,6 +62,7 @@ export function parseRawInputs(getInput: GetInput, env: Env, onSecret: OnSecret 
     include: parseList(getInput('include')),
     exclude: parseList(getInput('exclude')),
     maxFiles: parsePositiveInt('max_files', getInput('max_files')),
+    maxCompletionTokens: parsePositiveInt('max_tokens', getInput('max_tokens')),
     incremental: parseOptionalBoolean('incremental', getInput('incremental')),
     failOn: optional(getInput('fail_on')),
     concurrency: parsePositiveInt('concurrency', getInput('concurrency')),

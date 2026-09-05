@@ -13,9 +13,16 @@ export interface PRContext {
   readonly defaultBranch: string;
 }
 
+/** Stable identity of our sticky summary comment on a PR. */
 export interface StickyState {
   readonly commentId: number;
+  /** Head SHA recorded by the run that last wrote this comment. */
   readonly sha: string;
+  /**
+   * True when that run hit LLM failures: the SHA was reviewed incompletely,
+   * so incremental logic must not treat the SHA as fully reviewed.
+   */
+  readonly partial: boolean;
 }
 
 export interface PostReviewResult {
@@ -290,21 +297,26 @@ function findSticky(comments: readonly unknown[]): StickyState | null {
     const body = asString(comment['body']);
     const id = comment['id'];
     if (typeof id === 'number' && body !== undefined && body.startsWith(STICKY_MARKER_PREFIX)) {
-      return { commentId: id, sha: extractSha(body) };
+      return { commentId: id, sha: extractSha(body), partial: extractPartial(body) };
     }
   }
   return null;
 }
 
 /**
- * Extract the reviewed SHA from the marker only. We read strictly the first
- * line (the marker owns it) so model-generated summary text below — which could
- * contain a spoofed `{"sha":...}` via prompt injection — cannot alter state.
+ * Extract state from the marker only. We read strictly the first line (the
+ * marker owns it) so model-generated summary text below — which could contain
+ * a spoofed `{"sha":...}` via prompt injection — cannot alter state.
  */
 function extractSha(body: string): string {
   const firstLine = body.split('\n', 1)[0] ?? '';
   const match = /"sha"\s*:\s*"([^"]*)"/.exec(firstLine);
   return match?.[1] ?? '';
+}
+
+function extractPartial(body: string): boolean {
+  const firstLine = body.split('\n', 1)[0] ?? '';
+  return /"partial"\s*:\s*true/.test(firstLine);
 }
 
 function decodeContent(data: unknown): string | null {

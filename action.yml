@@ -54,6 +54,9 @@ inputs:
   max_files:
     description: 'Maximum number of changed files to review.'
     required: false
+  max_tokens:
+    description: 'Optional completion max_tokens override forwarded to the LLM provider.'
+    required: false
   incremental:
     description: >-
       Review only commits pushed since the last review (true/false).

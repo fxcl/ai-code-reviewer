@@ -75,6 +75,8 @@ export interface ReviewConfig {
   readonly maxFiles: number;
   /** Approximate input-token budget per LLM call. Default 12000. */
   readonly maxTokensPerCall: number;
+  /** Optional completion max_tokens override forwarded to the provider. */
+  readonly maxCompletionTokens?: number;
   /** Custom review guidelines markdown injected into the prompt, or null. */
   readonly guidelines: string | null;
   /** Concurrent LLM calls. Default 4. */

@@ -44,6 +44,7 @@ const KNOWN_REVIEW: ReadonlySet<string> = new Set([
   'exclude',
   'incremental',
   'fail_on',
+  'max_tokens',
 ]);
 
 interface FileReview {
@@ -54,6 +55,7 @@ interface FileReview {
   readonly exclude: readonly string[] | undefined;
   readonly incremental: boolean | undefined;
   readonly failOn: string | undefined;
+  readonly maxCompletionTokens: number | undefined;
 }
 
 interface FileConfig {
@@ -72,6 +74,7 @@ const EMPTY_REVIEW: FileReview = {
   exclude: undefined,
   incremental: undefined,
   failOn: undefined,
+  maxCompletionTokens: undefined,
 };
 
 export function resolveConfig(
@@ -113,6 +116,7 @@ function mergeReviewConfig(raw: RawInputs, file: FileConfig, rulesContent: strin
     exclude: raw.exclude ?? file.review.exclude ?? DEFAULT_CONFIG.exclude,
     maxFiles: raw.maxFiles ?? DEFAULT_CONFIG.maxFiles,
     concurrency: raw.concurrency ?? DEFAULT_CONFIG.concurrency,
+    maxCompletionTokens: raw.maxCompletionTokens ?? file.review.maxCompletionTokens,
     guidelines: rulesContent,
   };
 }
@@ -163,6 +167,7 @@ function readReview(value: unknown, warnings: string[], configPath: string): Fil
     exclude: asStringArray(rec['exclude']),
     incremental: asBoolean(rec['incremental']),
     failOn: asString(rec['fail_on']),
+    maxCompletionTokens: asPositiveInt(rec['max_tokens']),
   };
 }
 
